@@ -1,0 +1,1332 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>麻将俄罗斯方块 - 青天井</title>
+    <style>
+        :root {
+            --bg: #1a1a2e;
+            --panel-bg: #16213e;
+            --text: #e0e0e0;
+            --gold: #d4a574;
+            --suit-s: #4caf84;
+            --suit-p: #5b8cce;
+            --suit-m: #c75b5b;
+            --cell-size: 34px;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            background: var(--bg);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            font-family: 'Segoe UI', 'Noto Sans SC', 'Microsoft YaHei', sans-serif;
+            user-select: none;
+            -webkit-user-select: none;
+            -webkit-tap-highlight-color: transparent;
+            overflow-y: auto;
+            padding: 10px;
+        }
+
+        .game-wrapper {
+            display: flex;
+            gap: 16px;
+            flex-wrap: wrap;
+            justify-content: center;
+            align-items: flex-start;
+            max-width: 750px;
+        }
+
+        .game-container {
+            position: relative;
+            background: #0d1117;
+            border: 3px solid #333;
+            border-radius: 12px;
+            padding: 8px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+        }
+
+        canvas {
+            display: block;
+            border-radius: 6px;
+        }
+
+        .side-panel {
+            background: var(--panel-bg);
+            border: 2px solid #333;
+            border-radius: 12px;
+            padding: 16px;
+            min-width: 240px;
+            max-width: 280px;
+            color: var(--text);
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .side-panel h2 {
+            text-align: center;
+            font-size: 1.3em;
+            color: var(--gold);
+            letter-spacing: 2px;
+            border-bottom: 2px solid #444;
+            padding-bottom: 8px;
+            margin: 0;
+        }
+        .side-panel h3 {
+            font-size: 0.95em;
+            color: #ccc;
+            margin: 0 0 4px 0;
+            letter-spacing: 1px;
+        }
+
+        .hand-display {
+            background: #0a0f14;
+            border-radius: 8px;
+            padding: 10px;
+            min-height: 60px;
+            border: 1px solid #333;
+        }
+
+        .tile-tag {
+            display: inline-block;
+            padding: 3px 7px;
+            margin: 2px;
+            border-radius: 4px;
+            font-weight: bold;
+            font-size: 0.85em;
+            letter-spacing: 0.5px;
+            border: 1px solid rgba(255, 255, 255, 0.25);
+        }
+        .tile-tag.suit-s {
+            background: #1a3a2a;
+            color: #5cdb8b;
+            border-color: #3a7a4a;
+        }
+        .tile-tag.suit-p {
+            background: #1a2a3a;
+            color: #7db8f0;
+            border-color: #3a5a8a;
+        }
+        .tile-tag.suit-m {
+            background: #3a1a1a;
+            color: #f08080;
+            border-color: #8a3a3a;
+        }
+
+        .meld-group {
+            background: #111820;
+            border-radius: 6px;
+            padding: 6px 8px;
+            margin: 4px 0;
+            border-left: 3px solid #555;
+            font-size: 0.82em;
+            line-height: 1.5;
+        }
+        .meld-group.shuntsu {
+            border-left-color: #5b8cce;
+        }
+        .meld-group.koutsu {
+            border-left-color: #d4a574;
+        }
+        .meld-group.kantsu {
+            border-left-color: #e06060;
+        }
+        .meld-group.pair {
+            border-left-color: #a0d2a0;
+            background: #0f1a0f;
+        }
+
+        .score-display {
+            text-align: center;
+            font-size: 2em;
+            font-weight: bold;
+            color: var(--gold);
+            letter-spacing: 2px;
+        }
+        .score-label {
+            text-align: center;
+            font-size: 0.75em;
+            color: #999;
+            letter-spacing: 1px;
+        }
+
+        .btn {
+            display: block;
+            width: 100%;
+            padding: 10px;
+            border: 2px solid #555;
+            border-radius: 8px;
+            background: #1a2530;
+            color: #ddd;
+            cursor: pointer;
+            font-size: 1em;
+            letter-spacing: 1px;
+            transition: all 0.2s;
+            font-family: inherit;
+        }
+        .btn:hover {
+            background: #243040;
+            border-color: #888;
+            color: #fff;
+        }
+        .btn:active {
+            transform: scale(0.97);
+            background: #2a3a4a;
+        }
+        .btn.restart-btn {
+            border-color: #d4a574;
+            color: #d4a574;
+            font-weight: bold;
+            margin-top: 4px;
+        }
+        .btn.restart-btn:hover {
+            background: #2a1f15;
+            border-color: #f0c090;
+            color: #f0c090;
+        }
+
+        .info-row {
+            display: flex;
+            justify-content: space-between;
+            font-size: 0.85em;
+            color: #bbb;
+            gap: 8px;
+        }
+        .info-row span {
+            white-space: nowrap;
+        }
+        .highlight-num {
+            color: var(--gold);
+            font-weight: bold;
+        }
+
+        .game-over-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.75);
+            border-radius: 10px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            pointer-events: none;
+            opacity: 0;
+            transition: opacity 0.4s;
+            z-index: 10;
+        }
+        .game-over-overlay.active {
+            opacity: 1;
+            pointer-events: auto;
+        }
+        .game-over-overlay .msg {
+            font-size: 2em;
+            font-weight: bold;
+            letter-spacing: 3px;
+            margin-bottom: 8px;
+        }
+        .game-over-overlay .msg.win {
+            color: #ffd700;
+        }
+        .game-over-overlay .msg.lose {
+            color: #e06060;
+        }
+        .game-over-overlay .detail {
+            color: #ddd;
+            font-size: 0.9em;
+            text-align: center;
+            line-height: 1.6;
+        }
+
+        .key-hints {
+            font-size: 0.7em;
+            color: #777;
+            text-align: center;
+            line-height: 1.6;
+        }
+        .key-hints b {
+            color: #aaa;
+        }
+
+        @media (max-width: 650px) {
+            .game-wrapper {
+                flex-direction: column;
+                align-items: center;
+                gap: 10px;
+            }
+            .side-panel {
+                min-width: auto;
+                max-width: 95vw;
+                width: 100%;
+                flex-direction: row;
+                flex-wrap: wrap;
+                gap: 8px;
+                font-size: 0.8em;
+                padding: 10px;
+            }
+            .side-panel h2 {
+                width: 100%;
+                font-size: 1em;
+            }
+            .side-panel>* {
+                flex: 1 1 auto;
+                min-width: 80px;
+            }
+            :root {
+                --cell-size: 28px;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="game-wrapper">
+        <div class="game-container" id="gameContainer">
+            <canvas id="gameCanvas"></canvas>
+            <div class="game-over-overlay" id="gameOverOverlay">
+                <div class="msg" id="gameOverMsg"></div>
+                <div class="detail" id="gameOverDetail"></div>
+            </div>
+        </div>
+        <div class="side-panel" id="sidePanel">
+            <h2>🀄 麻将方块</h2>
+            <div class="score-label">青天井 · 番数</div>
+            <div class="score-display" id="scoreDisplay">0</div>
+            <div class="info-row">
+                <span>已收集面子: <span class="highlight-num" id="meldCount">0</span>/4</span>
+                <span>总消除: <span class="highlight-num" id="totalClears">0</span></span>
+            </div>
+            <h3>🃏 雀头</h3>
+            <div class="hand-display" id="pairDisplay"></div>
+            <h3>📋 手牌区（面子）</h3>
+            <div class="hand-display" id="handDisplay"></div>
+            <div id="yakuPreview" style="font-size:0.75em;color:#999;text-align:center;"></div>
+            <button class="btn restart-btn" id="restartBtn">🔄 重新开始</button>
+            <div class="key-hints">
+                <b>← →</b> 移动 &nbsp; <b>↑</b> 旋转 &nbsp; <b>↓</b> 加速<br>
+                <b>空格</b> 硬降 &nbsp; <b>R</b> 重开
+            </div>
+        </div>
+    </div>
+
+    <script>
+        (function() {
+            // ==================== 常量 ====================
+            const COLS = 9;
+            const ROWS = 18;
+            const CELL_SIZE = 34;
+            const SUITS = ['s', 'p', 'm']; // 索子、筒子、万子
+            const SUIT_NAMES = { 's': '索', 'p': '筒', 'm': '万' };
+            const SUIT_COLORS = { 's': '#4caf84', 'p': '#5b8cce', 'm': '#c75b5b' };
+            const SUIT_LIGHT = { 's': '#7de8b0', 'p': '#8ab8f8', 'm': '#f09090' };
+            const SUIT_DARK = { 's': '#2a6a3e', 'p': '#2a4a7a', 'm': '#7a2a2a' };
+            const SUIT_BG = { 's': '#1a3022', 'p': '#1a2436', 'm': '#301a1a' };
+
+            // ==================== DOM元素 ====================
+            const canvas = document.getElementById('gameCanvas');
+            const ctx = canvas.getContext('2d');
+            const gameContainer = document.getElementById('gameContainer');
+            const gameOverOverlay = document.getElementById('gameOverOverlay');
+            const gameOverMsg = document.getElementById('gameOverMsg');
+            const gameOverDetail = document.getElementById('gameOverDetail');
+            const scoreDisplay = document.getElementById('scoreDisplay');
+            const meldCountDisplay = document.getElementById('meldCount');
+            const totalClearsDisplay = document.getElementById('totalClears');
+            const pairDisplay = document.getElementById('pairDisplay');
+            const handDisplay = document.getElementById('handDisplay');
+            const yakuPreview = document.getElementById('yakuPreview');
+            const restartBtn = document.getElementById('restartBtn');
+
+            // Canvas尺寸
+            const canvasWidth = COLS * CELL_SIZE + 16;
+            const canvasHeight = ROWS * CELL_SIZE + 16;
+            canvas.width = canvasWidth;
+            canvas.height = canvasHeight;
+            canvas.style.width = canvasWidth + 'px';
+            canvas.style.height = canvasHeight + 'px';
+
+            // ==================== 游戏状态 ====================
+            let board = []; // board[row][col] = 's'|'p'|'m'|null
+            let currentPiece = null;
+            let handMelds = []; // 收集的面子 [{type:'shuntsu'|'koutsu'|'kantsu', tiles:[{suit,number},...]}]
+            let pairTiles = null; // 雀头 {suit, number} （两张相同的牌）
+            let gameOver = false;
+            let gameResult = null; // 'win'|'lose'|null
+            let totalClears = 0;
+            let dropTimer = 0;
+            let dropInterval = 700; // ms
+            let animationId = null;
+            let lastTime = 0;
+            let pendingClears = []; // 待显示的消除动画
+            let clearAnimTimer = 0;
+            const CLEAR_ANIM_DURATION = 350; // 消除动画持续时间ms
+
+            // ==================== 方块定义 ====================
+            // 标准7种方块形状（相对坐标）
+            const PIECE_SHAPES = [
+                // I
+                [{ r: 0, c: 0 }, { r: 0, c: 1 }, { r: 0, c: 2 }, { r: 0, c: 3 }],
+                // O
+                [{ r: 0, c: 0 }, { r: 0, c: 1 }, { r: 1, c: 0 }, { r: 1, c: 1 }],
+                // T
+                [{ r: 0, c: 1 }, { r: 1, c: 0 }, { r: 1, c: 1 }, { r: 1, c: 2 }],
+                // S
+                [{ r: 0, c: 1 }, { r: 0, c: 2 }, { r: 1, c: 0 }, { r: 1, c: 1 }],
+                // Z
+                [{ r: 0, c: 0 }, { r: 0, c: 1 }, { r: 1, c: 1 }, { r: 1, c: 2 }],
+                // J
+                [{ r: 0, c: 0 }, { r: 1, c: 0 }, { r: 1, c: 1 }, { r: 1, c: 2 }],
+                // L
+                [{ r: 0, c: 2 }, { r: 1, c: 0 }, { r: 1, c: 1 }, { r: 1, c: 2 }],
+            ];
+
+            // ==================== 辅助函数 ====================
+            function randomInt(min, max) {
+                return Math.floor(Math.random() * (max - min + 1)) + min;
+            }
+
+            function randomChoice(arr) {
+                return arr[Math.floor(Math.random() * arr.length)];
+            }
+
+            function shuffle(arr) {
+                const a = [...arr];
+                for (let i = a.length - 1; i > 0; i--) {
+                    const j = Math.floor(Math.random() * (i + 1));
+                    [a[i], a[j]] = [a[j], a[i]];
+                }
+                return a;
+            }
+
+            // 为方块分配花色：每种花色最多2次
+            function generatePieceSuits() {
+                // 随机选择分配模式：2+2+0 或 2+1+1
+                const mode = randomChoice(['double', 'mixed']);
+                let suits;
+                if (mode === 'double') {
+                    // 两种花色各2个
+                    const chosen = shuffle(SUITS).slice(0, 2);
+                    suits = [chosen[0], chosen[0], chosen[1], chosen[1]];
+                } else {
+                    // 一种花色2个，另外两种各1个
+                    const main = randomChoice(SUITS);
+                    const others = SUITS.filter(s => s !== main);
+                    suits = [main, main, others[0], others[1]];
+                }
+                return shuffle(suits); // 随机排列到4个格子
+            }
+
+            // 创建新方块
+            function createPiece(shapeIndex) {
+                const shape = PIECE_SHAPES[shapeIndex !== undefined ? shapeIndex : randomInt(0, PIECE_SHAPES
+                    .length - 1)];
+                const suits = generatePieceSuits();
+                // 计算初始列偏移（居中）
+                const maxCol = Math.max(...shape.map(c => c.c));
+                const minCol = Math.min(...shape.map(c => c.c));
+                const shapeWidth = maxCol - minCol + 1;
+                const startCol = Math.floor((COLS - shapeWidth) / 2) - minCol;
+                const startRow = 0;
+                const cells = shape.map((cell, i) => ({
+                    r: cell.r + startRow,
+                    c: cell.c + startCol,
+                    suit: suits[i],
+                }));
+                return { cells, locked: false };
+            }
+
+            // 旋转方块（顺时针）
+            function rotatePiece(piece) {
+                if (!piece || piece.locked) return null;
+                // 计算中心点
+                const avgR = piece.cells.reduce((s, c) => s + c.r, 0) / piece.cells.length;
+                const avgC = piece.cells.reduce((s, c) => s + c.c, 0) / piece.cells.length;
+                const newCells = piece.cells.map(cell => {
+                    const dr = cell.r - avgR;
+                    const dc = cell.c - avgC;
+                    // 顺时针旋转： (dr, dc) -> (dc, -dr)
+                    return {
+                        r: Math.round(avgR + dc),
+                        c: Math.round(avgC - dr),
+                        suit: cell.suit,
+                    };
+                });
+                // 检查是否有效
+                if (isValidPlacement(newCells)) {
+                    return { ...piece, cells: newCells };
+                }
+                // 墙踢：尝试左右移动
+                for (const kick of [1, -1, 2, -2]) {
+                    const kickedCells = newCells.map(c => ({ ...c, c: c.c + kick }));
+                    if (isValidPlacement(kickedCells)) {
+                        return { ...piece, cells: kickedCells };
+                    }
+                }
+                // 尝试上移
+                const upCells = newCells.map(c => ({ ...c, r: c.r - 1 }));
+                if (isValidPlacement(upCells)) {
+                    return { ...piece, cells: upCells };
+                }
+                return null; // 无法旋转
+            }
+
+            function isValidPlacement(cells) {
+                for (const cell of cells) {
+                    if (cell.c < 0 || cell.c >= COLS) return false;
+                    if (cell.r >= ROWS) return false;
+                    if (cell.r < 0) continue; // 允许在顶部之上
+                    if (board[cell.r][cell.c] !== null) return false;
+                }
+                return true;
+            }
+
+            function isPieceValid(piece) {
+                if (!piece) return false;
+                return isValidPlacement(piece.cells);
+            }
+
+            // ==================== 棋盘操作 ====================
+            function initBoard() {
+                board = [];
+                for (let r = 0; r < ROWS; r++) {
+                    board[r] = new Array(COLS).fill(null);
+                }
+            }
+
+            function lockPiece(piece) {
+                for (const cell of piece.cells) {
+                    if (cell.r >= 0 && cell.r < ROWS && cell.c >= 0 && cell.c < COLS) {
+                        board[cell.r][cell.c] = cell.suit;
+                    }
+                }
+                piece.locked = true;
+            }
+
+            // 检测并收集所有可消除的组合
+            function detectClears() {
+                const used = [];
+                for (let r = 0; r < ROWS; r++) {
+                    used[r] = new Array(COLS).fill(false);
+                }
+                const foundMelds = [];
+
+                // 1. 检测竖向4连（杠子）
+                for (let c = 0; c < COLS; c++) {
+                    for (let r = 0; r <= ROWS - 4; r++) {
+                        const suit = board[r][c];
+                        if (suit === null) continue;
+                        if (used[r][c] || used[r + 1][c] || used[r + 2][c] || used[r + 3][c]) continue;
+                        if (board[r + 1][c] === suit && board[r + 2][c] === suit && board[r + 3][c] === suit) {
+                            const tiles = [
+                                { suit, number: c + 1 },
+                                { suit, number: c + 1 },
+                                { suit, number: c + 1 },
+                                { suit, number: c + 1 },
+                            ];
+                            foundMelds.push({ type: 'kantsu', tiles, cells: [{ r, c }, { r: r + 1, c }, { r: r + 2,
+                                    c }, { r: r + 3, c }
+                                ] });
+                            used[r][c] = true;
+                            used[r + 1][c] = true;
+                            used[r + 2][c] = true;
+                            used[r + 3][c] = true;
+                        }
+                    }
+                }
+
+                // 2. 检测竖向3连（刻子）——不与杠子重叠
+                for (let c = 0; c < COLS; c++) {
+                    for (let r = 0; r <= ROWS - 3; r++) {
+                        const suit = board[r][c];
+                        if (suit === null) continue;
+                        if (used[r][c] || used[r + 1][c] || used[r + 2][c]) continue;
+                        if (board[r + 1][c] === suit && board[r + 2][c] === suit) {
+                            const tiles = [
+                                { suit, number: c + 1 },
+                                { suit, number: c + 1 },
+                                { suit, number: c + 1 },
+                            ];
+                            foundMelds.push({ type: 'koutsu', tiles, cells: [{ r, c }, { r: r + 1, c }, { r: r + 2,
+                                c }] });
+                            used[r][c] = true;
+                            used[r + 1][c] = true;
+                            used[r + 2][c] = true;
+                        }
+                    }
+                }
+
+                // 3. 检测横向3连（顺子）——同一行连续3列同花色
+                for (let r = 0; r < ROWS; r++) {
+                    for (let c = 0; c <= COLS - 3; c++) {
+                        const suit = board[r][c];
+                        if (suit === null) continue;
+                        if (used[r][c] || used[r][c + 1] || used[r][c + 2]) continue;
+                        if (board[r][c + 1] === suit && board[r][c + 2] === suit) {
+                            const tiles = [
+                                { suit, number: c + 1 },
+                                { suit, number: c + 2 },
+                                { suit, number: c + 3 },
+                            ];
+                            foundMelds.push({ type: 'shuntsu', tiles, cells: [{ r, c }, { r, c: c + 1 }, { r, c: c +
+                                    2 }
+                                ] });
+                            used[r][c] = true;
+                            used[r][c + 1] = true;
+                            used[r][c + 2] = true;
+                        }
+                    }
+                }
+
+                return { melds: foundMelds, used };
+            }
+
+            function applyClears(melds) {
+                for (const meld of melds) {
+                    for (const cell of meld.cells) {
+                        if (cell.r >= 0 && cell.r < ROWS && cell.c >= 0 && cell.c < COLS) {
+                            board[cell.r][cell.c] = null;
+                        }
+                    }
+                }
+            }
+
+            // ==================== 手牌管理 ====================
+            function generateRandomPair() {
+                const suit = randomChoice(SUITS);
+                const number = randomInt(1, 9);
+                return { suit, number };
+            }
+
+            function addMeldsToHand(melds) {
+                for (const meld of melds) {
+                    if (handMelds.length < 4) {
+                        handMelds.push({
+                            type: meld.type,
+                            tiles: meld.tiles,
+                        });
+                    }
+                }
+                totalClears += melds.length;
+            }
+
+            function getFullHand() {
+                // 返回完整手牌：雀头+4组面子
+                if (!pairTiles) return null;
+                const allTiles = [
+                    { suit: pairTiles.suit, number: pairTiles.number },
+                    { suit: pairTiles.suit, number: pairTiles.number },
+                ];
+                for (const meld of handMelds) {
+                    for (const tile of meld.tiles) {
+                        allTiles.push({ ...tile });
+                    }
+                }
+                return allTiles;
+            }
+
+            // ==================== 日麻役种判断（青天井） ====================
+            function analyzeYaku(pair, melds) {
+                if (!pair || melds.length < 4) return { yakuList: [], totalHan: 0 };
+
+                const allTiles = [
+                    { suit: pair.suit, number: pair.number },
+                    { suit: pair.suit, number: pair.number },
+                ];
+                for (const meld of melds) {
+                    for (const tile of meld.tiles) {
+                        allTiles.push({ ...tile });
+                    }
+                }
+
+                const yakuList = [];
+
+                // 统计花色分布
+                const suitCount = { s: 0, p: 0, m: 0 };
+                const numbers = [];
+                for (const t of allTiles) {
+                    suitCount[t.suit]++;
+                    numbers.push(t.number);
+                }
+                const presentSuits = SUITS.filter(s => suitCount[s] > 0);
+                const allSameSuit = presentSuits.length === 1;
+
+                // 统计面子类型
+                const shuntsuCount = melds.filter(m => m.type === 'shuntsu').length;
+                const koutsuCount = melds.filter(m => m.type === 'koutsou' || m.type === 'koutsu').length;
+                const kantsuCount = melds.filter(m => m.type === 'kantsu').length;
+                const allShuntsu = shuntsuCount === 4;
+                const allKoutsuOrKantsu = (koutsuCount + kantsuCount) === 4;
+
+                // 断幺九：所有牌数字在2-8
+                const hasTerminal = numbers.some(n => n === 1 || n === 9);
+                if (!hasTerminal) {
+                    yakuList.push({ name: '断幺九', han: 1 });
+                }
+
+                // 平和：4组顺子 + 雀头不是役牌（简化：4组顺子）
+                if (allShuntsu) {
+                    yakuList.push({ name: '平和', han: 1 });
+                }
+
+                // 对对和：4组刻子/杠子
+                if (allKoutsuOrKantsu) {
+                    yakuList.push({ name: '对对和', han: 2 });
+                }
+
+                // 清一色：所有牌同花色
+                if (allSameSuit && presentSuits.length === 1) {
+                    yakuList.push({ name: '清一色', han: 6 });
+                } else if (presentSuits.length === 2 && !hasTerminal) {
+                    // 混一色简化判断（无字牌，所以两花色可视为混一色的一种）
+                    // 实际上日麻混一色需要+字牌，这里放宽
+                }
+                if (presentSuits.length <= 2 && !allSameSuit && suitCount[presentSuits[0]] > 0 && suitCount[presentSuits[
+                        1]] > 0 && suitCount[presentSuits[0]] + suitCount[presentSuits[1]] === allTiles.length) {
+                    // 两种花色 = 混一色（简化，实际需要字牌）
+                    yakuList.push({ name: '混一色', han: 2 });
+                }
+
+                // 一杯口：两组完全相同的顺子
+                const shuntsuSignatures = [];
+                for (const meld of melds) {
+                    if (meld.type === 'shuntsu') {
+                        const sig = meld.tiles.map(t => `${t.suit}${t.number}`).join(',');
+                        shuntsuSignatures.push(sig);
+                    }
+                }
+                const sigCount = {};
+                for (const sig of shuntsuSignatures) {
+                    sigCount[sig] = (sigCount[sig] || 0) + 1;
+                }
+                const hasDouble = Object.values(sigCount).some(c => c >= 2);
+                const hasTwoDouble = Object.values(sigCount).filter(c => c >= 2).length >= 2 ||
+                    Object.values(sigCount).some(c => c >= 4);
+                if (hasTwoDouble) {
+                    yakuList.push({ name: '二杯口', han: 3 });
+                } else if (hasDouble && allShuntsu) {
+                    yakuList.push({ name: '一杯口', han: 1 });
+                }
+
+                // 三色同顺
+                const shuntsuByNum = {};
+                for (const meld of melds) {
+                    if (meld.type === 'shuntsu') {
+                        const startNum = meld.tiles[0].number;
+                        const suit = meld.tiles[0].suit;
+                        const key = startNum;
+                        if (!shuntsuByNum[key]) shuntsuByNum[key] = new Set();
+                        shuntsuByNum[key].add(suit);
+                    }
+                }
+                for (const [key, suits] of Object.entries(shuntsuByNum)) {
+                    if (suits.size >= 3) {
+                        yakuList.push({ name: '三色同顺', han: 2 });
+                        break;
+                    }
+                }
+
+                // 三色同刻
+                const koutsuByNum = {};
+                for (const meld of melds) {
+                    if (meld.type === 'koutsu' || meld.type === 'kantsu') {
+                        const num = meld.tiles[0].number;
+                        const suit = meld.tiles[0].suit;
+                        const key = num;
+                        if (!koutsuByNum[key]) koutsuByNum[key] = new Set();
+                        koutsuByNum[key].add(suit);
+                    }
+                }
+                for (const [key, suits] of Object.entries(koutsuByNum)) {
+                    if (suits.size >= 3) {
+                        yakuList.push({ name: '三色同刻', han: 2 });
+                        break;
+                    }
+                }
+
+                // 去重
+                const seen = new Set();
+                const uniqueYaku = [];
+                for (const y of yakuList) {
+                    if (!seen.has(y.name)) {
+                        seen.add(y.name);
+                        uniqueYaku.push(y);
+                    }
+                }
+
+                const totalHan = uniqueYaku.reduce((sum, y) => sum + y.han, 0);
+                return { yakuList: uniqueYaku, totalHan };
+            }
+
+            // ==================== 渲染 ====================
+            function drawBoard() {
+                ctx.clearRect(0, 0, canvasWidth, canvasHeight);
+                const offsetX = 8;
+                const offsetY = 8;
+
+                // 背景网格
+                for (let r = 0; r < ROWS; r++) {
+                    for (let c = 0; c < COLS; c++) {
+                        const x = offsetX + c * CELL_SIZE;
+                        const y = offsetY + r * CELL_SIZE;
+                        ctx.fillStyle = (r + c) % 2 === 0 ? '#111820' : '#151d28';
+                        ctx.fillRect(x, y, CELL_SIZE, CELL_SIZE);
+                        ctx.strokeStyle = '#1a2535';
+                        ctx.strokeRect(x, y, CELL_SIZE, CELL_SIZE);
+                    }
+                }
+
+                // 列号标记
+                ctx.fillStyle = '#333';
+                ctx.font = '10px "Segoe UI","Noto Sans SC",sans-serif';
+                ctx.textAlign = 'center';
+                for (let c = 0; c < COLS; c++) {
+                    const x = offsetX + c * CELL_SIZE + CELL_SIZE / 2;
+                    const y = offsetY - 4;
+                    ctx.fillText(c + 1, x, y);
+                }
+
+                // 棋盘上的牌
+                for (let r = 0; r < ROWS; r++) {
+                    for (let c = 0; c < COLS; c++) {
+                        if (board[r][c] !== null) {
+                            drawTile(offsetX + c * CELL_SIZE, offsetY + r * CELL_SIZE, board[r][c], c + 1, false);
+                        }
+                    }
+                }
+
+                // 当前方块
+                if (currentPiece && !currentPiece.locked && !gameOver) {
+                    for (const cell of currentPiece.cells) {
+                        if (cell.r >= 0 && cell.r < ROWS && cell.c >= 0 && cell.c < COLS) {
+                            const x = offsetX + cell.c * CELL_SIZE;
+                            const y = offsetY + cell.r * CELL_SIZE;
+                            drawTile(x, y, cell.suit, cell.c + 1, true);
+                        }
+                    }
+                    // 预览落点
+                    const ghostCells = getGhostPosition(currentPiece);
+                    if (ghostCells) {
+                        for (const cell of ghostCells) {
+                            if (cell.r >= 0 && cell.r < ROWS && cell.c >= 0 && cell.c < COLS &&
+                                board[cell.r][cell.c] === null &&
+                                !currentPiece.cells.some(pc => pc.r === cell.r && pc.c === cell.c)) {
+                                const x = offsetX + cell.c * CELL_SIZE;
+                                const y = offsetY + cell.r * CELL_SIZE;
+                                drawGhostTile(x, y, cell.suit, cell.c + 1);
+                            }
+                        }
+                    }
+                }
+
+                // 消除动画高亮
+                if (pendingClears.length > 0 && clearAnimTimer > 0) {
+                    const alpha = Math.sin((clearAnimTimer / CLEAR_ANIM_DURATION) * Math.PI * 2) * 0.5 + 0.5;
+                    for (const meld of pendingClears) {
+                        for (const cell of meld.cells) {
+                            const x = offsetX + cell.c * CELL_SIZE;
+                            const y = offsetY + cell.r * CELL_SIZE;
+                            ctx.fillStyle = `rgba(255,255,200,${alpha * 0.7})`;
+                            ctx.fillRect(x, y, CELL_SIZE, CELL_SIZE);
+                            ctx.strokeStyle = `rgba(255,200,50,${alpha})`;
+                            ctx.lineWidth = 3;
+                            ctx.strokeRect(x + 1, y + 1, CELL_SIZE - 2, CELL_SIZE - 2);
+                            ctx.lineWidth = 1;
+                        }
+                    }
+                }
+            }
+
+            function drawTile(x, y, suit, number, isActive) {
+                const sz = CELL_SIZE;
+                const pad = 2;
+                // 牌体
+                const gradient = ctx.createLinearGradient(x, y, x + sz, y + sz);
+                const baseColor = SUIT_COLORS[suit];
+                const lightColor = SUIT_LIGHT[suit];
+                gradient.addColorStop(0, lightColor);
+                gradient.addColorStop(0.5, baseColor);
+                gradient.addColorStop(1, SUIT_DARK[suit]);
+                ctx.fillStyle = gradient;
+                ctx.fillRect(x + pad, y + pad, sz - pad * 2, sz - pad * 2);
+
+                // 边框
+                ctx.strokeStyle = isActive ? '#fff' : 'rgba(255,255,255,0.4)';
+                ctx.lineWidth = isActive ? 2 : 1;
+                ctx.strokeRect(x + pad, y + pad, sz - pad * 2, sz - pad * 2);
+                ctx.lineWidth = 1;
+
+                // 高光
+                ctx.fillStyle = 'rgba(255,255,255,0.2)';
+                ctx.fillRect(x + pad + 2, y + pad + 2, sz - pad * 2 - 4, (sz - pad * 2) / 3);
+
+                // 数字
+                ctx.fillStyle = '#fff';
+                ctx.font = `bold ${sz*0.4}px "Segoe UI","Noto Sans SC",sans-serif`;
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                const numStr = number.toString();
+                const suitChar = suit === 's' ? '索' : suit === 'p' ? '筒' : '万';
+                ctx.fillText(numStr, x + sz / 2, y + sz * 0.38);
+                ctx.font = `${sz*0.22}px "Segoe UI","Noto Sans SC",sans-serif`;
+                ctx.fillText(suitChar, x + sz / 2, y + sz * 0.68);
+
+                // 发光效果（活动方块）
+                if (isActive) {
+                    ctx.shadowColor = 'rgba(255,255,255,0.6)';
+                    ctx.shadowBlur = 6;
+                    ctx.strokeStyle = 'rgba(255,255,255,0.8)';
+                    ctx.lineWidth = 2;
+                    ctx.strokeRect(x + pad, y + pad, sz - pad * 2, sz - pad * 2);
+                    ctx.shadowBlur = 0;
+                    ctx.lineWidth = 1;
+                }
+            }
+
+            function drawGhostTile(x, y, suit, number) {
+                const sz = CELL_SIZE;
+                const pad = 2;
+                ctx.fillStyle = 'rgba(255,255,255,0.08)';
+                ctx.fillRect(x + pad, y + pad, sz - pad * 2, sz - pad * 2);
+                ctx.strokeStyle = 'rgba(255,255,255,0.35)';
+                ctx.setLineDash([3, 3]);
+                ctx.strokeRect(x + pad, y + pad, sz - pad * 2, sz - pad * 2);
+                ctx.setLineDash([]);
+                ctx.fillStyle = 'rgba(255,255,255,0.5)';
+                ctx.font = `bold ${sz*0.35}px "Segoe UI","Noto Sans SC",sans-serif`;
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.fillText(number.toString(), x + sz / 2, y + sz * 0.38);
+                const suitChar = suit === 's' ? '索' : suit === 'p' ? '筒' : '万';
+                ctx.font = `${sz*0.2}px "Segoe UI","Noto Sans SC",sans-serif`;
+                ctx.fillText(suitChar, x + sz / 2, y + sz * 0.68);
+            }
+
+            function getGhostPosition(piece) {
+                if (!piece || piece.locked) return null;
+                let ghost = piece.cells.map(c => ({ ...c }));
+                let maxDrop = ROWS;
+                for (const cell of ghost) {
+                    let drop = 0;
+                    while (cell.r + drop + 1 < ROWS && board[cell.r + drop + 1][cell.c] === null) {
+                        drop++;
+                    }
+                    // 还要检查不被其他ghost cell占据
+                    const otherGhostCells = ghost.filter(gc => gc !== cell);
+                    for (let d = 0; d <= drop; d++) {
+                        if (otherGhostCells.some(gc => gc.r === cell.r + d && gc.c === cell.c)) {
+                            drop = d - 1;
+                            break;
+                        }
+                    }
+                    if (drop < 0) drop = 0;
+                    maxDrop = Math.min(maxDrop, drop);
+                }
+                if (maxDrop < 0) maxDrop = 0;
+                return ghost.map(c => ({ ...c, r: c.r + maxDrop }));
+            }
+
+            function renderHandDisplay() {
+                // 雀头显示
+                if (pairTiles) {
+                    const suitChar = SUIT_NAMES[pairTiles.suit];
+                    const num = pairTiles.number;
+                    pairDisplay.innerHTML = `
+                        <span class="tile-tag suit-${pairTiles.suit}">${num}${suitChar}</span>
+                        <span class="tile-tag suit-${pairTiles.suit}">${num}${suitChar}</span>
+                        <span style="font-size:0.7em;color:#888;">（雀头）</span>
+                    `;
+                } else {
+                    pairDisplay.innerHTML = '<span style="color:#555;">等待初始化...</span>';
+                }
+
+                // 面子显示
+                if (handMelds.length === 0) {
+                    handDisplay.innerHTML = '<span style="color:#555;">暂无面子，消除横3连或竖3连来收集</span>';
+                } else {
+                    let html = '';
+                    for (let i = 0; i < handMelds.length; i++) {
+                        const meld = handMelds[i];
+                        const typeNames = { shuntsu: '顺子', koutsu: '刻子', kantsu: '杠子' };
+                        const typeName = typeNames[meld.type] || meld.type;
+                        const tileSpans = meld.tiles.map(t => {
+                            const sChar = SUIT_NAMES[t.suit];
+                            return `<span class="tile-tag suit-${t.suit}">${t.number}${sChar}</span>`;
+                        }).join(' ');
+                        html +=
+                            `<div class="meld-group ${meld.type}"><b>${typeName}</b> [${i+1}/4]: ${tileSpans}</div>`;
+                    }
+                    // 空位
+                    for (let i = handMelds.length; i < 4; i++) {
+                        html +=
+                            `<div class="meld-group" style="border-left-color:#333;color:#555;">[${i+1}/4] 待收集...</div>`;
+                    }
+                    handDisplay.innerHTML = html;
+                }
+
+                // 役种预览
+                if (pairTiles && handMelds.length === 4) {
+                    const { yakuList, totalHan } = analyzeYaku(pairTiles, handMelds);
+                    if (yakuList.length > 0) {
+                        yakuPreview.innerHTML = '🏆 役种: ' + yakuList.map(y => `${y.name}(${y.han}番)`).join('、') +
+                            `<br><b style="color:#ffd700;">总番数: ${totalHan} 番</b>`;
+                    } else {
+                        yakuPreview.innerHTML = '<span style="color:#888;">无役（0番）</span>';
+                    }
+                } else if (handMelds.length < 4 && pairTiles) {
+                    yakuPreview.innerHTML = `<span style="color:#666;">还需收集 ${4-handMelds.length} 组面子</span>`;
+                } else {
+                    yakuPreview.innerHTML = '';
+                }
+
+                meldCountDisplay.textContent = handMelds.length;
+                totalClearsDisplay.textContent = totalClears;
+                if (pairTiles && handMelds.length === 4) {
+                    const { totalHan } = analyzeYaku(pairTiles, handMelds);
+                    scoreDisplay.textContent = totalHan;
+                } else {
+                    scoreDisplay.textContent = '—';
+                }
+            }
+
+            // ==================== 游戏逻辑 ====================
+            function spawnPiece() {
+                const piece = createPiece();
+                if (!isPieceValid(piece)) {
+                    // 游戏失败
+                    endGame('lose');
+                    return null;
+                }
+                return piece;
+            }
+
+            function movePiece(dc, dr) {
+                if (!currentPiece || currentPiece.locked || gameOver) return false;
+                const newCells = currentPiece.cells.map(c => ({ ...c, c: c.c + dc, r: c.r + dr }));
+                if (isValidPlacement(newCells)) {
+                    currentPiece.cells = newCells;
+                    return true;
+                }
+                return false;
+            }
+
+            function hardDrop() {
+                if (!currentPiece || currentPiece.locked || gameOver) return;
+                let dropDist = 0;
+                while (movePiece(0, 1)) {
+                    dropDist++;
+                }
+                lockAndProcess();
+            }
+
+            function softDrop() {
+                if (!currentPiece || currentPiece.locked || gameOver) return;
+                if (movePiece(0, 1)) {
+                    dropTimer = 0;
+                } else {
+                    lockAndProcess();
+                }
+            }
+
+            function lockAndProcess() {
+                if (!currentPiece || currentPiece.locked || gameOver) return;
+                lockPiece(currentPiece);
+                dropTimer = 0;
+
+                // 检测消除
+                const { melds, used } = detectClears();
+                if (melds.length > 0) {
+                    // 启动消除动画
+                    pendingClears = melds;
+                    clearAnimTimer = CLEAR_ANIM_DURATION;
+                    // 延迟应用消除
+                    setTimeout(() => {
+                        applyClears(melds);
+                        addMeldsToHand(melds);
+                        pendingClears = [];
+                        clearAnimTimer = 0;
+                        renderHandDisplay();
+                        drawBoard();
+
+                        // 检查是否收集到4组面子
+                        if (handMelds.length >= 4 && !gameOver) {
+                            endGame('win');
+                            return;
+                        }
+
+                        // 生成新方块
+                        currentPiece = spawnPiece();
+                        if (!currentPiece) {
+                            endGame('lose');
+                        }
+                        dropTimer = 0;
+                        renderHandDisplay();
+                        drawBoard();
+                    }, CLEAR_ANIM_DURATION);
+                    // 立即设置currentPiece为locked状态防止操作
+                    currentPiece.locked = true;
+                } else {
+                    // 没有消除，直接生成新方块
+                    currentPiece = spawnPiece();
+                    if (!currentPiece) {
+                        endGame('lose');
+                    }
+                    renderHandDisplay();
+                    drawBoard();
+                }
+            }
+
+            function endGame(result) {
+                gameOver = true;
+                gameResult = result;
+                if (currentPiece) currentPiece.locked = true;
+
+                const overlay = gameOverOverlay;
+                if (result === 'win') {
+                    const { yakuList, totalHan } = analyzeYaku(pairTiles, handMelds);
+                    gameOverMsg.textContent = '🎉 和了！';
+                    gameOverMsg.className = 'msg win';
+                    const yakuStr = yakuList.length > 0 ?
+                        yakuList.map(y => `${y.name}(${y.han}番)`).join('\n') :
+                        '无役';
+                    gameOverDetail.innerHTML = `
+                        青天井总番数: <b style="color:#ffd700;font-size:1.4em;">${totalHan} 番</b><br>
+                        役种: ${yakuStr.replace(/\n/g,'<br>')}<br>
+                        <span style="color:#aaa;">收集了 ${handMelds.length} 组面子 + 雀头</span>
+                    `;
+                    scoreDisplay.textContent = totalHan;
+                } else {
+                    gameOverMsg.textContent = '💥 游戏结束';
+                    gameOverMsg.className = 'msg lose';
+                    gameOverDetail.innerHTML = `
+                        方块堆满，未能完成手牌<br>
+                        <span style="color:#aaa;">已收集 ${handMelds.length}/4 组面子</span>
+                    `;
+                    scoreDisplay.textContent = '—';
+                }
+                overlay.classList.add('active');
+                renderHandDisplay();
+                drawBoard();
+            }
+
+            function restartGame() {
+                gameOver = false;
+                gameResult = null;
+                handMelds = [];
+                totalClears = 0;
+                pendingClears = [];
+                clearAnimTimer = 0;
+                dropTimer = 0;
+                dropInterval = 700;
+                initBoard();
+                pairTiles = generateRandomPair();
+                currentPiece = createPiece();
+                if (!isPieceValid(currentPiece)) {
+                    initBoard();
+                    currentPiece = createPiece();
+                }
+                gameOverOverlay.classList.remove('active');
+                scoreDisplay.textContent = '—';
+                meldCountDisplay.textContent = '0';
+                totalClearsDisplay.textContent = '0';
+                renderHandDisplay();
+                drawBoard();
+                lastTime = performance.now();
+            }
+
+            // ==================== 游戏循环 ====================
+            function gameLoop(timestamp) {
+                if (!lastTime) lastTime = timestamp;
+                const dt = timestamp - lastTime;
+                lastTime = timestamp;
+
+                if (!gameOver) {
+                    // 消除动画计时
+                    if (clearAnimTimer > 0) {
+                        clearAnimTimer -= dt;
+                        if (clearAnimTimer <= 0) {
+                            clearAnimTimer = 0;
+                        }
+                    }
+
+                    // 下落计时（仅在无消除动画且无pending时）
+                    if (clearAnimTimer <= 0 && pendingClears.length === 0 && currentPiece && !currentPiece.locked) {
+                        dropTimer += dt;
+                        if (dropTimer >= dropInterval) {
+                            dropTimer = 0;
+                            if (!movePiece(0, 1)) {
+                                lockAndProcess();
+                            }
+                        }
+                    }
+
+                    // 加速下落（随消除次数加快）
+                    dropInterval = Math.max(150, 700 - totalClears * 60);
+                }
+
+                drawBoard();
+                renderHandDisplay();
+                animationId = requestAnimationFrame(gameLoop);
+            }
+
+            // ==================== 输入处理 ====================
+            function handleKeyDown(e) {
+                if (gameOver) {
+                    if (e.key === 'r' || e.key === 'R' || e.key === ' ') {
+                        restartGame();
+                    }
+                    return;
+                }
+                if (clearAnimTimer > 0 || pendingClears.length > 0) return;
+                if (!currentPiece || currentPiece.locked) return;
+
+                switch (e.key) {
+                    case 'ArrowLeft':
+                        e.preventDefault();
+                        movePiece(-1, 0);
+                        break;
+                    case 'ArrowRight':
+                        e.preventDefault();
+                        movePiece(1, 0);
+                        break;
+                    case 'ArrowDown':
+                        e.preventDefault();
+                        softDrop();
+                        break;
+                    case 'ArrowUp':
+                        e.preventDefault();
+                        const rotated = rotatePiece(currentPiece);
+                        if (rotated) {
+                            currentPiece = rotated;
+                        }
+                        break;
+                    case ' ':
+                        e.preventDefault();
+                        hardDrop();
+                        break;
+                    case 'r':
+                    case 'R':
+                        e.preventDefault();
+                        restartGame();
+                        break;
+                }
+                drawBoard();
+            }
+
+            // 触摸控制按钮（移动端简易支持）
+            function addTouchControls() {
+                // 在canvas上添加滑动手势
+                let touchStartX = 0;
+                let touchStartY = 0;
+                let touchStartTime = 0;
+                let swiped = false;
+
+                canvas.addEventListener('touchstart', (e) => {
+                    if (gameOver || !currentPiece || currentPiece.locked || clearAnimTimer > 0 || pendingClears
+                        .length > 0) return;
+                    const touch = e.touches[0];
+                    touchStartX = touch.clientX;
+                    touchStartY = touch.clientY;
+                    touchStartTime = Date.now();
+                    swiped = false;
+                }, { passive: false });
+
+                canvas.addEventListener('touchmove', (e) => {
+                    if (swiped || gameOver || !currentPiece || currentPiece.locked || clearAnimTimer > 0 ||
+                        pendingClears.length > 0) return;
+                    const touch = e.touches[0];
+                    const dx = touch.clientX - touchStartX;
+                    const dy = touch.clientY - touchStartY;
+                    const threshold = CELL_SIZE * 0.6;
+                    if (Math.abs(dx) > threshold || Math.abs(dy) > threshold) {
+                        swiped = true;
+                        if (Math.abs(dx) > Math.abs(dy)) {
+                            movePiece(dx > 0 ? 1 : -1, 0);
+                        } else if (dy > threshold) {
+                            softDrop();
+                        }
+                        touchStartX = touch.clientX;
+                        touchStartY = touch.clientY;
+                        swiped = false;
+                    }
+                }, { passive: false });
+
+                canvas.addEventListener('touchend', (e) => {
+                    if (gameOver || !currentPiece || currentPiece.locked || clearAnimTimer > 0 || pendingClears
+                        .length > 0) return;
+                    const dt = Date.now() - touchStartTime;
+                    const dx = Math.abs((e.changedTouches[0]?.clientX || touchStartX) - touchStartX);
+                    const dy = Math.abs((e.changedTouches[0]?.clientY || touchStartY) - touchStartY);
+                    if (!swiped && dt < 300 && dx < 20 && dy < 20) {
+                        // 点击 = 旋转
+                        const rotated = rotatePiece(currentPiece);
+                        if (rotated) currentPiece = rotated;
+                    }
+                    if (!swiped && dt < 400 && dy > 40 && dx < 30) {
+                        // 快速下滑 = 硬降
+                        hardDrop();
+                    }
+                });
+            }
+
+            // ==================== 初始化 ====================
+            function init() {
+                initBoard();
+                pairTiles = generateRandomPair();
+                handMelds = [];
+                totalClears = 0;
+                pendingClears = [];
+                clearAnimTimer = 0;
+                gameOver = false;
+                gameResult = null;
+                dropTimer = 0;
+                dropInterval = 700;
+                currentPiece = createPiece();
+                if (!isPieceValid(currentPiece)) {
+                    initBoard();
+                    currentPiece = createPiece();
+                }
+                gameOverOverlay.classList.remove('active');
+                scoreDisplay.textContent = '—';
+                meldCountDisplay.textContent = '0';
+                totalClearsDisplay.textContent = '0';
+                renderHandDisplay();
+                drawBoard();
+                lastTime = performance.now();
+            }
+
+            // ==================== 事件绑定 ====================
+            document.addEventListener('keydown', handleKeyDown);
+            restartBtn.addEventListener('click', restartGame);
+            addTouchControls();
+
+            // 窗口大小响应
+            function handleResize() {
+                // 保持canvas逻辑大小不变，CSS缩放由媒体查询处理
+            }
+            window.addEventListener('resize', handleResize);
+
+            // ==================== 启动 ====================
+            init();
+            animationId = requestAnimationFrame(gameLoop);
+
+            console.log('🀄 麻将俄罗斯方块 - 青天井计分');
+            console.log('  🎯 目标：消除4组面子（顺子/刻子/杠子）+ 雀头 = 完整手牌');
+            console.log('  🕹️ 操作：← → 移动 | ↑ 旋转 | ↓ 加速 | 空格 硬降 | R 重开');
+            console.log('  📋 横向3连同花色 = 顺子 | 竖向3连同花色 = 刻子 | 竖向4连同花色 = 杠子');
+            console.log('  🏆 消除4组面子后根据日麻役种计算青天井番数');
+        })();
+    </script>
+</body>
+</html>
