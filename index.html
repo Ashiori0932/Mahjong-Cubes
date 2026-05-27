@@ -349,7 +349,7 @@
             const SUIT_LIGHT = { 's': '#7de8b0', 'p': '#8ab8f8', 'm': '#f09090' };
             const SUIT_DARK = { 's': '#2a6a3e', 'p': '#2a4a7a', 'm': '#7a2a2a' };
             const SUIT_BG = { 's': '#1a3022', 'p': '#1a2436', 'm': '#301a1a' };
-            const APP_VERSION = 'v1.1.0';
+            const APP_VERSION = 'v1.2.0';
 
             // ==================== DOM元素 ====================
             const canvas = document.getElementById('gameCanvas');
@@ -1086,9 +1086,14 @@
                     clearAnimTimer = CLEAR_ANIM_DURATION;
                     // 延迟应用消除
                     setTimeout(() => {
-                        applyClears(melds);
-                        applyGravity();
-                        addMeldsToHand(melds);
+                        let chainMelds = melds;
+                        while (chainMelds.length > 0) {
+                            applyClears(chainMelds);
+                            addMeldsToHand(chainMelds);
+                            applyGravity();
+                            chainMelds = detectClears().melds;
+                        }
+
                         pendingClears = [];
                         clearAnimTimer = 0;
                         renderHandDisplay();
