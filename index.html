@@ -349,7 +349,7 @@
             const SUIT_LIGHT = { 's': '#7de8b0', 'p': '#8ab8f8', 'm': '#f09090' };
             const SUIT_DARK = { 's': '#2a6a3e', 'p': '#2a4a7a', 'm': '#7a2a2a' };
             const SUIT_BG = { 's': '#1a3022', 'p': '#1a2436', 'm': '#301a1a' };
-            const APP_VERSION = 'v1.2.0';
+            const APP_VERSION = 'v1.3.0';
 
             // ==================== DOM元素 ====================
             const canvas = document.getElementById('gameCanvas');
@@ -1091,21 +1091,22 @@
                             applyClears(chainMelds);
                             addMeldsToHand(chainMelds);
                             applyGravity();
+
+                            pendingClears = [];
+                            clearAnimTimer = 0;
+                            renderHandDisplay();
+                            drawBoard();
+
+                            // 每次消除后都立即判断胜利
+                            if (handMelds.length >= 4 && !gameOver) {
+                                endGame('win');
+                                return;
+                            }
+
                             chainMelds = detectClears().melds;
                         }
 
-                        pendingClears = [];
-                        clearAnimTimer = 0;
-                        renderHandDisplay();
-                        drawBoard();
-
-                        // 检查是否收集到4组面子
-                        if (handMelds.length >= 4 && !gameOver) {
-                            endGame('win');
-                            return;
-                        }
-
-                        // 生成新方块
+                        // 连锁结束后生成新方块
                         currentPiece = spawnPiece();
                         if (!currentPiece) {
                             endGame('lose');
