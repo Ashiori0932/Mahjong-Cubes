@@ -260,6 +260,20 @@
             color: #aaa;
         }
 
+        .version-badge {
+            position: fixed;
+            right: 10px;
+            bottom: 8px;
+            color: rgba(255, 255, 255, 0.55);
+            font-size: 12px;
+            letter-spacing: 0.5px;
+            background: rgba(0, 0, 0, 0.28);
+            border: 1px solid rgba(255, 255, 255, 0.18);
+            border-radius: 999px;
+            padding: 4px 10px;
+            pointer-events: none;
+        }
+
         @media (max-width: 650px) {
             .game-wrapper {
                 flex-direction: column;
@@ -320,6 +334,8 @@
             </div>
         </div>
     </div>
+    <div class="version-badge" id="versionBadge"></div>
+
 
     <script>
         (function() {
@@ -333,6 +349,7 @@
             const SUIT_LIGHT = { 's': '#7de8b0', 'p': '#8ab8f8', 'm': '#f09090' };
             const SUIT_DARK = { 's': '#2a6a3e', 'p': '#2a4a7a', 'm': '#7a2a2a' };
             const SUIT_BG = { 's': '#1a3022', 'p': '#1a2436', 'm': '#301a1a' };
+            const APP_VERSION = 'v1.3.0';
 
             // ==================== DOM元素 ====================
             const canvas = document.getElementById('gameCanvas');
@@ -348,6 +365,7 @@
             const handDisplay = document.getElementById('handDisplay');
             const yakuPreview = document.getElementById('yakuPreview');
             const restartBtn = document.getElementById('restartBtn');
+            const versionBadge = document.getElementById('versionBadge');
 
             // Canvas尺寸
             const canvasWidth = COLS * CELL_SIZE + 16;
@@ -597,6 +615,22 @@
                     for (const cell of meld.cells) {
                         if (cell.r >= 0 && cell.r < ROWS && cell.c >= 0 && cell.c < COLS) {
                             board[cell.r][cell.c] = null;
+                        }
+                    }
+                }
+            }
+
+            // 让悬空牌下落到各列底部
+            function applyGravity() {
+                for (let c = 0; c < COLS; c++) {
+                    let writeRow = ROWS - 1;
+                    for (let r = ROWS - 1; r >= 0; r--) {
+                        if (board[r][c] !== null) {
+                            if (writeRow !== r) {
+                                board[writeRow][c] = board[r][c];
+                                board[r][c] = null;
+                            }
+                            writeRow--;
                         }
                     }
                 }
@@ -1052,20 +1086,27 @@
                     clearAnimTimer = CLEAR_ANIM_DURATION;
                     // 延迟应用消除
                     setTimeout(() => {
-                        applyClears(melds);
-                        addMeldsToHand(melds);
-                        pendingClears = [];
-                        clearAnimTimer = 0;
-                        renderHandDisplay();
-                        drawBoard();
+                        let chainMelds = melds;
+                        while (chainMelds.length > 0) {
+                            applyClears(chainMelds);
+                            addMeldsToHand(chainMelds);
+                            applyGravity();
 
-                        // 检查是否收集到4组面子
-                        if (handMelds.length >= 4 && !gameOver) {
-                            endGame('win');
-                            return;
+                            pendingClears = [];
+                            clearAnimTimer = 0;
+                            renderHandDisplay();
+                            drawBoard();
+
+                            // 每次消除后都立即判断胜利
+                            if (handMelds.length >= 4 && !gameOver) {
+                                endGame('win');
+                                return;
+                            }
+
+                            chainMelds = detectClears().melds;
                         }
 
-                        // 生成新方块
+                        // 连锁结束后生成新方块
                         currentPiece = spawnPiece();
                         if (!currentPiece) {
                             endGame('lose');
@@ -1282,6 +1323,7 @@
 
             // ==================== 初始化 ====================
             function init() {
+                versionBadge.textContent = `版本 ${APP_VERSION}`;
                 initBoard();
                 pairTiles = generateRandomPair();
                 handMelds = [];
