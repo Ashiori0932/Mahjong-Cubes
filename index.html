@@ -602,6 +602,22 @@
                 }
             }
 
+            // 让悬空牌下落到各列底部
+            function applyGravity() {
+                for (let c = 0; c < COLS; c++) {
+                    let writeRow = ROWS - 1;
+                    for (let r = ROWS - 1; r >= 0; r--) {
+                        if (board[r][c] !== null) {
+                            if (writeRow !== r) {
+                                board[writeRow][c] = board[r][c];
+                                board[r][c] = null;
+                            }
+                            writeRow--;
+                        }
+                    }
+                }
+            }
+
             // ==================== 手牌管理 ====================
             function generateRandomPair() {
                 const suit = randomChoice(SUITS);
@@ -1053,6 +1069,7 @@
                     // 延迟应用消除
                     setTimeout(() => {
                         applyClears(melds);
+                        applyGravity();
                         addMeldsToHand(melds);
                         pendingClears = [];
                         clearAnimTimer = 0;
